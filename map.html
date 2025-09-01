@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bangladesh Educational Statistics Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- D3.js for color scaling -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Papa Parse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 220px;
+            font-size: 12px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .control-panel h3 {
+            margin: 0 0 12px 0;
+            color: #333;
+            font-size: 16px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+        
+        .metric-selector {
+            margin-bottom: 15px;
+        }
+        
+        .metric-selector label {
+            display: block;
+            margin: 6px 0;
+            font-weight: normal;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            border: 1px solid transparent;
+        }
+        
+        .metric-selector label:hover {
+            background-color: #f8f9fa;
+            border-color: #e9ecef;
+        }
+        
+        .metric-selector input[type="radio"]:checked + span {
+            font-weight: bold;
+        }
+        
+        .metric-selector input[type="radio"] {
+            margin-right: 8px;
+        }
+        
+        .legend {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 11px;
+            text-align: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 10px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 12px;
+            margin-right: 6px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 200px;
+            display: none;
+            font-size: 11px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .tooltip {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .stats-summary {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 180px;
+            font-size: 11px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .stats-summary h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 12px;
+        }
+        
+        .stat-item {
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="control-panel">
+        <h3>📊 Education Metrics</h3>
+        
+        <!-- File upload section -->
+        <div class="file-upload-section" style="margin-bottom: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 6px; border: 1px solid #e0e0e0;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 12px;">📁 Load Data Files</div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; font-size: 11px; margin-bottom: 2px;">CSV Data:</label>
+                <input type="file" id="csvFile" accept=".csv" style="font-size: 10px; width: 100%;">
+                <div id="csvStatus" style="font-size: 9px; margin-top: 2px; color: #666;">Select data.csv file</div>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; font-size: 11px; margin-bottom: 2px;">GeoJSON Map:</label>
+                <input type="file" id="geojsonFile" accept=".geojson,.json" style="font-size: 10px; width: 100%;">
+                <div id="geojsonStatus" style="font-size: 9px; margin-top: 2px; color: #666;">Select bangladesh_districts.geojson file</div>
+            </div>
+            <button id="loadDataBtn" style="background: #2196f3; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 10px; cursor: pointer; width: 100%; margin-top: 5px;" disabled>Load Map Data</button>
+        </div>
+        
+        <div class="metric-selector" id="metricSelector" style="opacity: 0.5; pointer-events: none;">
+            <div style="color: #666; text-align: center; padding: 10px;">Please load data files first</div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-title">Legend</div>
+            <div id="legend-content">Please load data files first</div>
+        </div>
+    </div>
+    
+    <div class="info-panel" id="info-panel">
+        <div id="info-content"></div>
+    </div>
+    
+    <div class="stats-summary" id="stats-summary">
+        <h4 id="stats-title">Data Status</h4>
+        <div id="stats-content">Please load CSV and GeoJSON files to view statistics</div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let geojsonLayer;
+        let educationData = {};
+        let currentMetric = '';
+        
+        // File upload variables
+        let csvFileData = null;
+        let geojsonFileData = null;
+        
+        // Detected columns from CSV
+        let detectedColumns = [];
+        let availableMetrics = {};
+        
+        // Color schemes for different metrics (will be dynamically populated)
+        const colorSchemes = {};
+        
+        // Predefined color palettes for automatic assignment
+        const colorPalettes = [
+            {
+                name: 'Green',
+                colors: ['#e8f5e8', '#c8e6c8', '#a4d4a4', '#81c784', '#66bb6a', '#4caf50', '#43a047', '#388e3c', '#2e7d32', '#1b5e20'],
+                iconColor: '#2d7d32',
+                icon: '🎓'
+            },
+            {
+                name: 'Orange',
+                colors: ['#fff3e0', '#ffe0b2', '#ffcc80', '#ffb74d', '#ffa726', '#ff9800', '#fb8c00', '#f57c00', '#ef6c00', '#e65100'],
+                iconColor: '#ef6c00',
+                icon: '📚'
+            },
+            {
+                name: 'Red',
+                colors: ['#ffebee', '#ffcdd2', '#ef9a9a', '#e57373', '#ef5350', '#f44336', '#e53935', '#d32f2f', '#c62828', '#b71c1c'],
+                iconColor: '#c62828',
+                icon: '📉'
+            },
+            {
+                name: 'Blue',
+                colors: ['#e3f2fd', '#bbdefb', '#90caf9', '#64b5f6', '#42a5f5', '#2196f3', '#1e88e5', '#1976d2', '#1565c0', '#0d47a1'],
+                iconColor: '#1565c0',
+                icon: '👥'
+            },
+            {
+                name: 'Purple',
+                colors: ['#f3e5f5', '#e1bee7', '#ce93d8', '#ba68c8', '#ab47bc', '#9c27b0', '#8e24aa', '#7b1fa2', '#6a1b9a', '#4a148c'],
+                iconColor: '#7b1fa2',
+                icon: '👨‍🎓'
+            },
+            {
+                name: 'Amber',
+                colors: ['#fff8e1', '#ffecb3', '#ffe082', '#ffd54f', '#ffca28', '#ffc107', '#ffb300', '#ffa000', '#ff8f00', '#ff6f00'],
+                iconColor: '#f57c00',
+                icon: '📝'
+            },
+            {
+                name: 'Teal',
+                colors: ['#e0f2f1', '#b2dfdb', '#80cbc4', '#4db6ac', '#26a69a', '#009688', '#00897b', '#00796b', '#00695c', '#004d40'],
+                iconColor: '#00796b',
+                icon: '💡'
+            },
+            {
+                name: 'Deep Orange',
+                colors: ['#fbe9e7', '#ffccbc', '#ffab91', '#ff8a65', '#ff7043', '#ff5722', '#f4511e', '#e64a19', '#d84315', '#bf360c'],
+                iconColor: '#e64a19',
+                icon: '🔥'
+            },
+            {
+                name: 'Indigo',
+                colors: ['#e8eaf6', '#c5cae9', '#9fa8da', '#7986cb', '#5c6bc0', '#3f51b5', '#3949ab', '#303f9f', '#283593', '#1a237e'],
+                iconColor: '#303f9f',
+                icon: '🔍'
+            },
+            {
+                name: 'Brown',
+                colors: ['#efebe9', '#d7ccc8', '#bcaaa4', '#a1887f', '#8d6e63', '#795548', '#6d4c41', '#5d4037', '#4e342e', '#3e2723'],
+                iconColor: '#5d4037',
+                icon: '📊'
+            },
+            {
+                name: 'Pink',
+                colors: ['#fce4ec', '#f8bbd9', '#f48fb1', '#f06292', '#ec407a', '#e91e63', '#d81b60', '#c2185b', '#ad1457', '#880e4f'],
+                iconColor: '#c2185b',
+                icon: '💗'
+            },
+            {
+                name: 'Cyan',
+                colors: ['#e0f7fa', '#b2ebf2', '#80deea', '#4dd0e1', '#26c6da', '#00bcd4', '#00acc1', '#0097a7', '#00838f', '#006064'],
+                iconColor: '#0097a7',
+                icon: '🌊'
+            }
+        ];
+        
+        // Track assigned colors to avoid duplicates
+        let assignedColorIndices = new Set();
+        
+        // Initialize the map
+        function initMap() {
+            map = L.map('map').setView([23.6850, 90.3563], 7);
+            
+            // Add OpenStreetMap tiles with better styling
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors | Education Data: Bangladesh Bureau of Statistics',
+                maxZoom: 18
+            }).addTo(map);
+            
+            // Add map controls
+            map.zoomControl.setPosition('bottomright');
+        }
+        
+        // Load CSV data from file upload with dynamic column detection
+        function loadEducationDataFromFile(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const data = {};
+                        
+                        // Detect available columns (excluding 'district')
+                        const columns = results.meta.fields || [];
+                        detectedColumns = columns.filter(col => col.toLowerCase() !== 'district');
+                        console.log('Detected columns:', detectedColumns);
+                        
+                        // Build available metrics dynamically
+                        availableMetrics = {};
+                        detectedColumns.forEach(col => {
+                            const colLower = col.toLowerCase().replace(/[^a-z]/g, '_');
+                            availableMetrics[colLower] = {
+                                originalName: col,
+                                displayName: col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            };
+                        });
+                        
+                        results.data.forEach(row => {
+                            if (row.district && row.district.trim()) {
+                                const districtData = {};
+                                
+                                // Dynamically add all numeric columns
+                                detectedColumns.forEach(col => {
+                                    const value = parseFloat(row[col]);
+                                    const colKey = col.toLowerCase().replace(/[^a-z]/g, '_');
+                                    districtData[colKey] = isNaN(value) ? 0 : value;
+                                });
+                                
+                                data[row.district.trim()] = districtData;
+                            }
+                        });
+                        
+                        console.log(`Loaded data for ${Object.keys(data).length} districts with ${detectedColumns.length} metrics`);
+                        console.log('Available metrics:', Object.keys(availableMetrics));
+                        
+                        // Update metric selector with new columns
+                        updateMetricSelector();
+                        
+                        resolve(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading CSV data:', error);
+                        reject(error);
+                    }
+                });
+            });
+        }
+        
+        // Get unique color palette for a metric based on its characteristics and index
+        function getUniqueColorForMetric(metricKey, index) {
+            let colorIndex = -1;
+            let selectedPalette;
+            
+            // First, try to assign based on metric type
+            if (metricKey.includes('graduation') || metricKey.includes('completion')) {
+                colorIndex = 0; // Green
+            } else if (metricKey.includes('literacy') || metricKey.includes('reading')) {
+                colorIndex = 1; // Orange
+            } else if (metricKey.includes('dropout') || metricKey.includes('failure')) {
+                colorIndex = 2; // Red
+            } else if (metricKey.includes('ratio') || metricKey.includes('teacher')) {
+                colorIndex = 3; // Blue
+            } else if (metricKey.includes('enrollment') || metricKey.includes('student')) {
+                colorIndex = 4; // Purple
+            } else if (metricKey.includes('score') || metricKey.includes('grade')) {
+                colorIndex = 5; // Amber
+            }
+            
+            // If colorIndex is already assigned or not set, find next available
+            if (colorIndex === -1 || assignedColorIndices.has(colorIndex)) {
+                // Find first available color index
+                for (let i = 0; i < colorPalettes.length; i++) {
+                    if (!assignedColorIndices.has(i)) {
+                        colorIndex = i;
+                        break;
+                    }
+                }
+                
+                // If all colors are assigned, cycle through with offset
+                if (colorIndex === -1) {
+                    colorIndex = index % colorPalettes.length;
+                }
+            }
+            
+            // Mark this color as assigned
+            assignedColorIndices.add(colorIndex);
+            selectedPalette = colorPalettes[colorIndex];
+            
+            console.log(`Assigned ${selectedPalette.name} palette to metric: ${metricKey}`);
+            
+            return {
+                palette: selectedPalette,
+                iconColor: selectedPalette.iconColor,
+                icon: selectedPalette.icon,
+                colorIndex: colorIndex
+            };
+        }
+        
+        // Update metric selector based on detected columns
+        function updateMetricSelector() {
+            const metricSelector = document.getElementById('metricSelector');
+            const existingMetrics = Object.keys(availableMetrics);
+            
+            if (existingMetrics.length === 0) return;
+            
+            // Reset assigned colors when updating metrics
+            assignedColorIndices.clear();
+            
+            // Clear existing options
+            metricSelector.innerHTML = '';
+            
+            // Add detected metrics
+            existingMetrics.forEach((metricKey, index) => {
+                const metric = availableMetrics[metricKey];
+                const isChecked = index === 0 ? 'checked' : ''; // First one checked by default
+                
+                // Get unique color and icon for this metric
+                const colorInfo = getUniqueColorForMetric(metricKey, index);
+                
+                metricSelector.innerHTML += `
+                    <label>
+                        <input type="radio" name="metric" value="${metricKey}" ${isChecked}>
+                        <span style="color: ${colorInfo.iconColor};">${colorInfo.icon} ${metric.displayName}</span>
+                    </label>
+                `;
+            });
+            
+            // Set current metric to first detected metric
+            if (existingMetrics.length > 0) {
+                currentMetric = existingMetrics[0];
+            }
+            
+            // Update color schemes for new metrics
+            updateColorSchemes();
+        }
+        
+        // Update color schemes based on detected metrics with unique colors
+        function updateColorSchemes() {
+            // Reset assigned colors tracking
+            assignedColorIndices.clear();
+            
+            Object.keys(availableMetrics).forEach((metricKey, index) => {
+                const metric = availableMetrics[metricKey];
+                
+                // Get unique color for this metric
+                const colorInfo = getUniqueColorForMetric(metricKey, index);
+                const palette = colorInfo.palette;
+                
+                // Determine if higher values are better or worse
+                let isReverse = false;
+                let unit = '%';
+                
+                if (metricKey.includes('dropout') || metricKey.includes('failure')) {
+                    isReverse = true; // Higher dropout = worse
+                } else if (metricKey.includes('ratio')) {
+                    isReverse = true; // Higher ratio might be worse
+                    unit = ':1';
+                } else if (metricKey.includes('score') && !metricKey.includes('rate')) {
+                    unit = '';
+                } else if (metricKey.includes('count') || metricKey.includes('number')) {
+                    unit = '';
+                } else if (metricKey.includes('index')) {
+                    unit = '';
+                }
+                
+                colorSchemes[metricKey] = {
+                    name: metric.displayName,
+                    colors: palette.colors,
+                    reverse: isReverse,
+                    unit: unit,
+                    paletteInfo: {
+                        name: palette.name,
+                        iconColor: palette.iconColor,
+                        icon: palette.icon
+                    }
+                };
+                
+                console.log(`🎨 Color scheme for ${metricKey}: ${palette.name} (${isReverse ? 'reversed' : 'normal'})`);
+            });
+        }
+        
+        // Load GeoJSON data from file upload
+        function loadGeoJSONDataFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const geoData = JSON.parse(e.target.result);
+                        console.log('Loaded GeoJSON data successfully');
+                        resolve(geoData);
+                    } catch (error) {
+                        console.error('Error parsing GeoJSON:', error);
+                        reject(error);
+                    }
+                };
+                reader.onerror = function(error) {
+                    console.error('Error reading GeoJSON file:', error);
+                    reject(error);
+                };
+                reader.readAsText(file);
+            });
+        }
+        
+        // Get color based on value and metric
+        function getColor(value, metric) {
+            const scheme = colorSchemes[metric];
+            
+            if (!scheme || isNaN(value) || value === null || value === undefined) {
+                return '#ccc'; // Gray for missing data
+            }
+            
+            const values = Object.values(educationData)
+                .map(d => d[metric])
+                .filter(v => !isNaN(v) && v !== null && v !== undefined);
+            
+            if (values.length === 0) return '#ccc';
+            
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            // Normalize value between 0 and 1
+            let normalized = max === min ? 0.5 : (value - min) / (max - min);
+            
+            // Reverse if needed (for dropout rate, higher = worse, so darker color)
+            if (scheme.reverse) {
+                normalized = 1 - normalized;
+            }
+            
+            // Get color index (0-9)
+            const colorIndex = Math.min(9, Math.floor(normalized * 10));
+            return scheme.colors[colorIndex];
+        }
+        
+        // Style function for districts
+        function style(feature) {
+            const districtName = feature.properties.shapeName;
+            const districtData = educationData[districtName];
+            const value = districtData ? districtData[currentMetric] : null;
+            
+            return {
+                fillColor: getColor(value, currentMetric),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+        }
+        
+        // Highlight feature on hover
+        function highlightFeature(e) {
+            const layer = e.target;
+            
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.9
+            });
+            
+            layer.bringToFront();
+            
+            // Show info panel
+            showInfoPanel(layer.feature);
+        }
+        
+        // Reset highlight
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+            hideInfoPanel();
+        }
+        
+        // Zoom to feature
+        function zoomToFeature(e) {
+            map.fitBounds(e.target.getBounds());
+        }
+        
+        // Show info panel with dynamic metrics display
+        function showInfoPanel(feature) {
+            const districtName = feature.properties.shapeName;
+            const districtData = educationData[districtName];
+            const infoPanel = document.getElementById('info-panel');
+            const infoContent = document.getElementById('info-content');
+            
+            if (districtData) {
+                let metricsHtml = '';
+                
+                // Display all available metrics dynamically
+                Object.keys(availableMetrics).forEach(metricKey => {
+                    const metric = availableMetrics[metricKey];
+                    const value = districtData[metricKey];
+                    const scheme = colorSchemes[metricKey];
+                    
+                    if (value !== undefined && value !== null && !isNaN(value)) {
+                        const icon = scheme.paletteInfo ? scheme.paletteInfo.icon : '📊';
+                        const color = scheme.paletteInfo ? scheme.paletteInfo.iconColor : '#666';
+                        metricsHtml += `<div style="margin: 4px 0; color: ${color};"><strong>${icon} ${metric.displayName}:</strong> ${value.toFixed(1)}${scheme.unit}</div>`;
+                    }
+                });
+                
+                infoContent.innerHTML = `
+                    <h4 style="margin: 0 0 10px 0; color: #333; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${districtName}</h4>
+                    <div style="line-height: 1.6; font-size: 11px;">
+                        ${metricsHtml}
+                    </div>
+                `;
+            } else {
+                infoContent.innerHTML = `
+                    <h4 style="margin: 0 0 6px 0; color: #333; font-size: 12px;">${districtName}</h4>
+                    <div style="color: #666; font-size: 10px;">No data available</div>
+                `;
+            }
+            
+            infoPanel.style.display = 'block';
+        }
+        
+        // Hide info panel
+        function hideInfoPanel() {
+            document.getElementById('info-panel').style.display = 'none';
+        }
+        
+        // Add event listeners to each feature
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomToFeature
+            });
+        }
+        
+        // Update statistics summary
+        function updateStatsSummary() {
+            const scheme = colorSchemes[currentMetric];
+            const values = Object.values(educationData)
+                .map(d => d[currentMetric])
+                .filter(v => !isNaN(v) && v !== null && v !== undefined);
+            
+            if (values.length === 0) return;
+            
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            
+            document.getElementById('stats-title').textContent = scheme.name;
+            document.getElementById('stats-content').innerHTML = `
+                <div class="stat-item"><span>Highest:</span><span>${max.toFixed(1)}${scheme.unit}</span></div>
+                <div class="stat-item"><span>Average:</span><span>${avg.toFixed(1)}${scheme.unit}</span></div>
+                <div class="stat-item"><span>Lowest:</span><span>${min.toFixed(1)}${scheme.unit}</span></div>
+                <div class="stat-item"><span>Districts:</span><span>${values.length}</span></div>
+            `;
+        }
+        
+        // Update the map when metric changes
+        function updateMap() {
+            if (geojsonLayer) {
+                geojsonLayer.setStyle(style);
+            }
+            updateLegend();
+            updateStatsSummary();
+        }
+        
+        // Update legend
+        function updateLegend() {
+            const scheme = colorSchemes[currentMetric];
+            const legendContent = document.getElementById('legend-content');
+            const values = Object.values(educationData)
+                .map(d => d[currentMetric])
+                .filter(v => !isNaN(v) && v !== null && v !== undefined);
+            
+            if (values.length === 0) {
+                legendContent.innerHTML = '<div style="color: #666;">No data available</div>';
+                return;
+            }
+            
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            let html = '';
+            
+            // Create 5 legend items
+            for (let i = 0; i < 5; i++) {
+                const value = min + (max - min) * (i / 4);
+                const color = getColor(value, currentMetric);
+                const label = scheme.reverse ? 
+                    (i === 0 ? 'Highest' : i === 4 ? 'Lowest' : '') :
+                    (i === 0 ? 'Lowest' : i === 4 ? 'Highest' : '');
+                
+                html += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${color};"></div>
+                        <span>${value.toFixed(1)}${scheme.unit} ${label}</span>
+                    </div>
+                `;
+            }
+            
+            legendContent.innerHTML = html;
+        }
+        
+        // Initialize the application
+        async function init() {
+            try {
+                console.log('Initializing Bangladesh Education Map...');
+                
+                initMap();
+                setupFileUploadHandlers();
+                
+                console.log('🗺️ Bangladesh Education Map interface ready!');
+                console.log('📁 Please upload your CSV and GeoJSON files to view the map');
+                
+            } catch (error) {
+                console.error('Error initializing map interface:', error);
+                alert('Error initializing map interface. Please refresh the page and try again.');
+            }
+        }
+        
+        // Setup file upload event handlers
+        function setupFileUploadHandlers() {
+            const csvFileInput = document.getElementById('csvFile');
+            const geojsonFileInput = document.getElementById('geojsonFile');
+            const loadDataBtn = document.getElementById('loadDataBtn');
+            const csvStatus = document.getElementById('csvStatus');
+            const geojsonStatus = document.getElementById('geojsonStatus');
+            
+            // CSV file selection
+            csvFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    csvFileData = file;
+                    const isUpdate = educationData && Object.keys(educationData).length > 0;
+                    csvStatus.textContent = `Selected: ${file.name}${isUpdate ? ' (Update)' : ''}`;
+                    csvStatus.style.color = isUpdate ? '#ff9800' : '#2e7d32';
+                    checkIfReadyToLoad();
+                } else {
+                    csvFileData = null;
+                    csvStatus.textContent = 'Select data.csv file';
+                    csvStatus.style.color = '#666';
+                    checkIfReadyToLoad();
+                }
+            });
+            
+            // GeoJSON file selection
+            geojsonFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    geojsonFileData = file;
+                    const isUpdate = geojsonLayer !== null;
+                    geojsonStatus.textContent = `Selected: ${file.name}${isUpdate ? ' (Update)' : ''}`;
+                    geojsonStatus.style.color = isUpdate ? '#ff9800' : '#2e7d32';
+                    checkIfReadyToLoad();
+                } else {
+                    geojsonFileData = null;
+                    geojsonStatus.textContent = 'Select bangladesh_districts.geojson file';
+                    geojsonStatus.style.color = '#666';
+                    checkIfReadyToLoad();
+                }
+            });
+            
+            // Load data button
+            loadDataBtn.addEventListener('click', async function() {
+                if (!csvFileData || !geojsonFileData) {
+                    alert('Please select both CSV and GeoJSON files first.');
+                    return;
+                }
+                
+                try {
+                    const isUpdate = educationData && Object.keys(educationData).length > 0;
+                    
+                    loadDataBtn.disabled = true;
+                    loadDataBtn.textContent = isUpdate ? 'Updating...' : 'Loading...';
+                    loadDataBtn.style.background = '#ccc';
+                    
+                    // Load both files
+                    console.log(isUpdate ? 'Updating education data...' : 'Loading education data...');
+                    const newEducationData = await loadEducationDataFromFile(csvFileData);
+                    
+                    console.log('Loading geographic data...');
+                    const geoData = await loadGeoJSONDataFromFile(geojsonFileData);
+                    
+                    // Compare data for changes
+                    const oldDistrictCount = educationData ? Object.keys(educationData).length : 0;
+                    const newDistrictCount = Object.keys(newEducationData).length;
+                    const oldMetricCount = Object.keys(availableMetrics).length;
+                    
+                    // Update education data
+                    educationData = newEducationData;
+                    
+                    console.log('Data loaded successfully, updating map...');
+                    
+                    // Remove existing layer if present
+                    if (geojsonLayer) {
+                        map.removeLayer(geojsonLayer);
+                    }
+                    
+                    // Add GeoJSON layer to map
+                    geojsonLayer = L.geoJSON(geoData, {
+                        style: style,
+                        onEachFeature: onEachFeature
+                    }).addTo(map);
+                    
+                    // Enable metric selector
+                    const metricSelector = document.getElementById('metricSelector');
+                    metricSelector.style.opacity = '1';
+                    metricSelector.style.pointerEvents = 'auto';
+                    
+                    // Add event listeners for new metric options
+                    const radioButtons = document.querySelectorAll('input[name="metric"]');
+                    radioButtons.forEach(radio => {
+                        radio.addEventListener('change', function() {
+                            if (this.checked) {
+                                currentMetric = this.value;
+                                updateMap();
+                            }
+                        });
+                    });
+                    
+                    // Update all displays
+                    updateLegend();
+                    updateStatsSummary();
+                    
+                    // Update button with change summary
+                    let changeText = 'Data Loaded ✓';
+                    if (isUpdate) {
+                        const districtChange = newDistrictCount - oldDistrictCount;
+                        const metricChange = Object.keys(availableMetrics).length - oldMetricCount;
+                        let changes = [];
+                        
+                        if (districtChange > 0) changes.push(`+${districtChange} districts`);
+                        else if (districtChange < 0) changes.push(`${districtChange} districts`);
+                        
+                        if (metricChange > 0) changes.push(`+${metricChange} metrics`);
+                        else if (metricChange < 0) changes.push(`${metricChange} metrics`);
+                        
+                        if (changes.length > 0) {
+                            changeText = `Updated ✓ (${changes.join(', ')})`;
+                        } else {
+                            changeText = 'Updated ✓';
+                        }
+                    }
+                    
+                    loadDataBtn.textContent = changeText;
+                    loadDataBtn.style.background = '#4caf50';
+                    
+                    // Show update summary with color assignments
+                    console.log('🗺️ Bangladesh Education Map updated successfully!');
+                    console.log(`📊 Districts: ${newDistrictCount} | Metrics: ${Object.keys(availableMetrics).length}`);
+                    
+                    // Log color assignments
+                    Object.keys(availableMetrics).forEach(metricKey => {
+                        const scheme = colorSchemes[metricKey];
+                        if (scheme && scheme.paletteInfo) {
+                            console.log(`🎨 ${scheme.paletteInfo.icon} ${scheme.name}: ${scheme.paletteInfo.name} palette`);
+                        }
+                    });
+                    
+                    if (isUpdate) {
+                        console.log(`📈 Changes: Districts ${oldDistrictCount}→${newDistrictCount}, Metrics: ${oldMetricCount}→${Object.keys(availableMetrics).length}`);
+                    }
+                    
+                    // Auto-select first metric if current metric no longer exists
+                    const availableMetricKeys = Object.keys(availableMetrics);
+                    if (!availableMetricKeys.includes(currentMetric) && availableMetricKeys.length > 0) {
+                        currentMetric = availableMetricKeys[0];
+                        document.querySelector(`input[value="${currentMetric}"]`).checked = true;
+                        updateMap();
+                    }
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading data files. Please check that the files are valid CSV and GeoJSON formats.');
+                    
+                    // Reset button
+                    loadDataBtn.disabled = false;
+                    loadDataBtn.textContent = 'Load Map Data';
+                    loadDataBtn.style.background = '#2196f3';
+                }
+            });
+        }
+        
+        // Check if both files are selected to enable load button
+        function checkIfReadyToLoad() {
+            const loadDataBtn = document.getElementById('loadDataBtn');
+            const isDataLoaded = educationData && Object.keys(educationData).length > 0;
+            
+            if (csvFileData && geojsonFileData) {
+                loadDataBtn.disabled = false;
+                loadDataBtn.style.background = '#2196f3';
+                loadDataBtn.textContent = isDataLoaded ? 'Update Map Data' : 'Load Map Data';
+            } else {
+                loadDataBtn.disabled = true;
+                loadDataBtn.style.background = '#ccc';
+                loadDataBtn.textContent = isDataLoaded ? 'Update Map Data' : 'Load Map Data';
+            }
+        }
+        
+        // Start the application when page loads
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Add keyboard shortcuts for metrics (will be dynamically assigned)
+        document.addEventListener('keydown', function(e) {
+            const metricKeys = Object.keys(availableMetrics);
+            const keyNum = parseInt(e.key);
+            if (keyNum >= 1 && keyNum <= metricKeys.length) {
+                const targetMetric = metricKeys[keyNum - 1];
+                const radioButton = document.querySelector(`input[value="${targetMetric}"]`);
+                if (radioButton) {
+                    radioButton.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
