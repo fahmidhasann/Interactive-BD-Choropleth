@@ -18,15 +18,6 @@ An interactive web-based choropleth map visualization tool for exploring educati
 - **Multi-version data support** (data v1, v2, v3 with progressive feature additions)
 - **Sample datasets included** for testing and demonstration purposes
 
-### Educational Metrics
-Current supported metrics include:
-- **Dropout Rate** - Student attrition percentages
-- **Student-Teacher Ratio** - Educational resource allocation
-- **Graduation Rate** - Academic completion rates
-- **Literacy Rate** - Basic literacy percentages
-- **Women's Education Rate** - Gender-specific education metrics
-- **Employment Rate** - Post-education employment statistics *(v3)*
-
 ### Visualization Features
 - **Choropleth color coding** with metric-specific palettes
 - **Interactive legend** with value ranges
