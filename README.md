@@ -1,5 +1,12 @@
 # Bangladesh Districts Choropleth Map - Educational Data Visualization
 
+## 🌐 **Live Demo**
+**🚀 [Check out the interactive map here!](https://fahmidhasann.github.io/Interactive-BD-Choropleth/) 🗺️**
+
+*Try the live version to explore Bangladesh's educational data through interactive choropleth mapping*
+
+---
+
 An interactive web-based choropleth map visualization tool for exploring educational statistics across all 64 districts of Bangladesh. This application provides dynamic data visualization through choropleth mapping with customizable metrics and real-time statistics.
 
 ## 🌟 Features
