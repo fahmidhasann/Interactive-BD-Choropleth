@@ -169,6 +169,26 @@
         <!-- File upload section -->
         <div class="file-upload-section" style="margin-bottom: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 6px; border: 1px solid #e0e0e0;">
             <div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 12px;">📁 Load Data Files</div>
+            
+            <!-- Sample Data Download Section -->
+            <div style="margin-bottom: 10px; padding: 8px; background-color: #e8f5e8; border: 1px solid #c8e6c8; border-radius: 4px;">
+                <div style="font-weight: bold; margin-bottom: 6px; color: #2e7d32; font-size: 11px;">📥 Sample Data Files</div>
+                <div style="font-size: 9px; color: #2e7d32; margin-bottom: 6px;">Download sample files to test the application:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+                    <a href="data v1.csv" download style="background: #4caf50; color: white; text-decoration: none; padding: 4px 6px; border-radius: 3px; font-size: 9px; text-align: center; transition: background 0.3s;" 
+                       onmouseover="this.style.background='#388e3c'" onmouseout="this.style.background='#4caf50'" title="Basic metrics (4 columns)">📊 CSV v1</a>
+                    <a href="data v2.csv" download style="background: #4caf50; color: white; text-decoration: none; padding: 4px 6px; border-radius: 3px; font-size: 9px; text-align: center; transition: background 0.3s;" 
+                       onmouseover="this.style.background='#388e3c'" onmouseout="this.style.background='#4caf50'" title="Extended metrics (5 columns)">📊 CSV v2</a>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <a href="data v3.csv" download style="background: #4caf50; color: white; text-decoration: none; padding: 4px 6px; border-radius: 3px; font-size: 9px; text-align: center; transition: background 0.3s;" 
+                       onmouseover="this.style.background='#388e3c'" onmouseout="this.style.background='#4caf50'" title="Full metrics with employment data (6 columns)">📊 CSV v3</a>
+                    <a href="bangladesh_districts.json" download style="background: #2196f3; color: white; text-decoration: none; padding: 4px 6px; border-radius: 3px; font-size: 9px; text-align: center; transition: background 0.3s;" 
+                       onmouseover="this.style.background='#1976d2'" onmouseout="this.style.background='#2196f3'" title="Bangladesh district boundaries GeoJSON">🗺️ GeoJSON</a>
+                </div>
+                <div style="font-size: 8px; color: #666; margin-top: 4px; font-style: italic;">Sample data for testing purposes</div>
+            </div>
+            
             <div style="margin-bottom: 8px;">
                 <label style="display: block; font-size: 11px; margin-bottom: 2px;">CSV Data:</label>
                 <input type="file" id="csvFile" accept=".csv" style="font-size: 10px; width: 100%;">
