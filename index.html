@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1024, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bangladesh Educational Statistics Map</title>
     
     <!-- Leaflet CSS -->
@@ -27,42 +27,6 @@
             width: 100%;
         }
         
-        /* Mobile-specific adjustments for desktop view */
-        @media (max-width: 768px) {
-            .control-panel {
-                max-width: 180px;
-                font-size: 11px;
-                padding: 10px;
-            }
-            
-            .resources-panel {
-                max-width: 220px;
-                font-size: 11px;
-                padding: 10px;
-                bottom: 5px;
-                right: 5px;
-            }
-            
-            .stats-summary {
-                max-width: 150px;
-                font-size: 10px;
-            }
-            
-            .info-panel {
-                max-width: 180px;
-                font-size: 10px;
-            }
-            
-            .file-upload-section {
-                padding: 8px;
-            }
-            
-            #loadDataBtn {
-                padding: 5px 10px;
-                font-size: 9px;
-            }
-        }
-        
         .control-panel {
             position: absolute;
             top: 10px;
@@ -75,14 +39,6 @@
             max-width: 220px;
             font-size: 12px;
             border: 1px solid #e0e0e0;
-        }
-        
-        /* Adjust control panel for mobile */
-        @media (max-width: 768px) {
-            .control-panel {
-                max-width: 180px;
-                padding: 10px;
-            }
         }
         
         .control-panel h3 {
@@ -215,17 +171,6 @@
             max-width: 280px;
             font-size: 12px;
             border: 1px solid #e0e0e0;
-        }
-        
-        /* Adjust resources panel for mobile */
-        @media (max-width: 768px) {
-            .resources-panel {
-                max-width: 220px;
-                padding: 10px;
-                font-size: 11px;
-                bottom: 5px;
-                right: 5px;
-            }
         }
         
         .resources-panel h3 {
@@ -511,12 +456,6 @@
             
             // Add map controls
             map.zoomControl.setPosition('bottomright');
-            
-            // Add touch support for mobile devices
-            map.touchZoom.enable();
-            map.doubleClickZoom.enable();
-            map.boxZoom.enable();
-            map.keyboard.enable();
         }
         
         // Load CSV data from file upload with dynamic column detection
