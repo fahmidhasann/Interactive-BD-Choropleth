@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Force desktop view on mobile devices -->
+    <meta name="viewport" content="width=1200, initial-scale=0.3, maximum-scale=1.0, user-scalable=yes">
     <title>Bangladesh Educational Statistics Map</title>
     
     <!-- Leaflet CSS -->
@@ -15,6 +16,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <style>
+        /* Container for fixed-width desktop view */
+        .desktop-container {
+            width: 1200px;
+            min-width: 1200px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            overflow-x: auto;
+        }
+        
+        /* Force desktop view on all devices */
+        html, body {
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -25,6 +46,36 @@
         #map {
             height: 100vh;
             width: 100%;
+            min-width: 1200px;
+        }
+        
+        @media screen and (max-width: 1200px) {
+            html, body {
+                overflow-x: hidden;
+            }
+            
+            .desktop-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            #map {
+                min-width: 1200px;
+                width: 1200px;
+            }
+        }
+        
+        /* Additional mobile-specific fixes */
+        @media screen and (max-width: 768px) {
+            .desktop-container {
+                transform: scale(0.9);
+                transform-origin: top center;
+            }
+            
+            .control-panel, .stats-summary, .resources-panel, .info-panel {
+                transform: scale(0.9);
+                transform-origin: top left;
+            }
         }
         
         .control-panel {
@@ -39,6 +90,9 @@
             max-width: 220px;
             font-size: 12px;
             border: 1px solid #e0e0e0;
+            /* Ensure panel stays within view */
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
         }
         
         .control-panel h3 {
@@ -122,6 +176,9 @@
             display: none;
             font-size: 11px;
             border: 1px solid #e0e0e0;
+            /* Ensure panel stays within view */
+            max-height: 300px;
+            overflow-y: auto;
         }
         
         .tooltip {
@@ -145,6 +202,9 @@
             max-width: 180px;
             font-size: 11px;
             border: 1px solid #e0e0e0;
+            /* Ensure panel stays within view */
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
         }
         
         .stats-summary h4 {
@@ -171,6 +231,9 @@
             max-width: 280px;
             font-size: 12px;
             border: 1px solid #e0e0e0;
+            /* Ensure panel stays within view */
+            max-height: 400px;
+            overflow-y: auto;
         }
         
         .resources-panel h3 {
@@ -262,9 +325,10 @@
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    
-    <div class="control-panel">
+    <div class="desktop-container">
+        <div id="map"></div>
+        
+        <div class="control-panel">
         <h3>📊 Education Metrics</h3>
         
         <!-- File upload section -->
@@ -343,6 +407,7 @@
             </div>
         </div>
     </div>
+</div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -446,7 +511,15 @@
         
         // Initialize the map
         function initMap() {
-            map = L.map('map').setView([23.6850, 90.3563], 7);
+            map = L.map('map', {
+                touchZoom: true,
+                doubleClickZoom: true,
+                dragging: true,
+                scrollWheelZoom: true,
+                boxZoom: true,
+                keyboard: true,
+                tap: true
+            }).setView([23.6850, 90.3563], 7);
             
             // Add OpenStreetMap tiles with better styling
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -455,7 +528,16 @@
             }).addTo(map);
             
             // Add map controls
-            map.zoomControl.setPosition('bottomright');
+            L.control.zoom({position: 'bottomright'}).addTo(map);
+            
+            // Add touch-specific event listeners
+            map.on('touchstart', function(e) {
+                console.log('Touch start');
+            });
+            
+            map.on('touchend', function(e) {
+                console.log('Touch end');
+            });
         }
         
         // Load CSV data from file upload with dynamic column detection
@@ -1059,8 +1141,58 @@
             }
         }
         
+        // Mobile detection and viewport adjustment
+        function adjustForMobile() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            console.log("Device type detected:", isMobile ? "Mobile" : "Desktop");
+            
+            // Create or update viewport meta tag
+            let viewportMeta = document.querySelector('meta[name="viewport"]');
+            if (!viewportMeta) {
+                viewportMeta = document.createElement('meta');
+                viewportMeta.name = "viewport";
+                document.head.appendChild(viewportMeta);
+            }
+            
+            // Set viewport to force desktop view
+            if (isMobile) {
+                viewportMeta.content = "width=1200, initial-scale=0.4, maximum-scale=2.0, user-scalable=yes";
+                
+                // Add mobile-specific styling
+                const mobileStyle = document.createElement('style');
+                mobileStyle.textContent = `
+                    @media screen and (max-width: 768px) {
+                        html, body {
+                            overflow-x: hidden;
+                        }
+                        
+                        .desktop-container {
+                            overflow-x: auto;
+                            -webkit-overflow-scrolling: touch;
+                        }
+                        
+                        #map {
+                            touch-action: manipulation;
+                        }
+                        
+                        .control-panel, .stats-summary, .resources-panel {
+                            position: relative;
+                            transform: scale(0.85);
+                            transform-origin: top left;
+                        }
+                    }
+                `;
+                document.head.appendChild(mobileStyle);
+            } else {
+                viewportMeta.content = "width=1200, initial-scale=1.0";
+            }
+        }
+        
         // Start the application when page loads
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            adjustForMobile();
+            init();
+        });
         
         // Add keyboard shortcuts for metrics (will be dynamically assigned)
         document.addEventListener('keydown', function(e) {
